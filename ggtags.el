@@ -158,7 +158,7 @@ If nil, use Emacs default."
   :type '(choice (const :tag "Default" nil) integer)
   :group 'ggtags)
 
-(defcustom ggtags-global-abbreviate-filename 40
+(defcustom ggtags-global-abbreviate-filename 60
   "Non-nil to display file names abbreviated e.g. \"/u/b/env\".
 If an integer abbreviate only names longer than that number."
   :type '(choice (const :tag "No" nil)
@@ -190,7 +190,7 @@ isn't built with sqlite3 support."
   :safe #'ggtags-list-of-string-p
   :group 'ggtags)
 
-(defcustom ggtags-sort-by-nearness nil
+(defcustom ggtags-sort-by-nearness t
   "Sort tags by nearness to current directory.
 GNU Global 6.5+ required."
   :type 'boolean
@@ -244,7 +244,7 @@ in current project."
   :type 'boolean
   :group 'ggtags)
 
-(defcustom ggtags-global-large-output 1000
+(defcustom ggtags-global-large-output 4096
   "Number of lines in the Global buffer to indicate large output."
   :type 'number
   :group 'ggtags)
@@ -254,7 +254,7 @@ in current project."
   :type 'integer
   :group 'ggtags)
 
-(defcustom ggtags-enable-navigation-keys t
+(defcustom ggtags-enable-navigation-keys nil
   "If non-nil key bindings in `ggtags-navigation-map' are enabled."
   :safe 'booleanp
   :type 'boolean
@@ -2100,14 +2100,19 @@ When finished invoke CALLBACK in BUFFER with process exit status."
     m))
 
 (defvar ggtags-mode-map
-  (let ((map (make-sparse-keymap))
+  (let ((keymap (make-sparse-keymap))
+        (sub-keymap (make-sparse-keymap))
         (menu (make-sparse-keymap "Ggtags")))
-    (define-key map "\M-." 'ggtags-find-tag-dwim)
-    (define-key map (kbd "M-]") 'ggtags-find-reference)
-    (define-key map (kbd "C-M-.") 'ggtags-find-tag-regexp)
-    (define-key map ggtags-mode-prefix-key ggtags-mode-prefix-map)
+    (define-key keymap "\C-cg" sub-keymap)
+    (define-key sub-keymap "d" 'ggtags-find-definition)
+    (define-key sub-keymap "i" 'ggtags-find-tag-regexp)
+    (define-key sub-keymap "c" 'ggtags-find-reference)
+    (define-key sub-keymap "s" 'ggtags-find-other-symbol)
+    (define-key sub-keymap "g" 'ggtags-find-tag-dwim)
+    (define-key sub-keymap "n" 'ggtags-navigation-next-file)
+    (define-key sub-keymap "p" 'ggtags-navigation-previous-file)
     ;; Menu items
-    (define-key map [menu-bar ggtags] (cons "Ggtags" menu))
+    (define-key keymap [menu-bar ggtags] (cons "Ggtags" menu))
     ;; Ordered backwards
     (define-key menu [report-bugs]
       `(menu-item "Report bugs"
@@ -2185,7 +2190,7 @@ When finished invoke CALLBACK in BUFFER with process exit status."
     (define-key menu [run-gtags]
       '(menu-item "Run gtags" ggtags-create-tags
                   :visible (not (ggtags-find-project))))
-    map))
+    keymap))
 
 (defvar ggtags-mode-line-project-keymap
   (let ((map (make-sparse-keymap)))
@@ -2216,7 +2221,6 @@ to nil disables displaying this information.")
   (ggtags-setup-highlight-tag-at-point ggtags-highlight-tag)
   (if ggtags-mode
       (progn
-        (add-hook 'after-save-hook 'ggtags-after-save-function nil t)
         (add-hook 'xref-backend-functions 'ggtags--xref-backend nil t)
         ;; Append to serve as a fallback method.
         (add-hook 'completion-at-point-functions
@@ -2232,7 +2236,6 @@ to nil disables displaying this information.")
           (setq mode-line-buffer-identification
                 (append mode-line-buffer-identification
                         '(ggtags-mode-line-project-name)))))
-    (remove-hook 'after-save-hook 'ggtags-after-save-function t)
     (remove-hook 'xref-backend-functions 'ggtags--xref-backend t)
     (remove-hook 'completion-at-point-functions #'ggtags-completion-at-point t)
     (remove-function (local 'eldoc-documentation-function) 'ggtags-eldoc-function)
